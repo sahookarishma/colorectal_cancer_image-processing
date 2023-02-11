@@ -1,0 +1,7 @@
+Github:
+1. You created some new files and now you want to push it on the github
+	--> git status : names in red color untracked files or new changes in the file
+	--> git add <file_name>
+	--> git staus : green color, files are being tracked
+	--> git commit -m "message" : before pushing commit is impotant
+	--> git push origin main : master --> branch name
