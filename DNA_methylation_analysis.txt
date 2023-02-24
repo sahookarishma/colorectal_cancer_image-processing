@@ -1,0 +1,162 @@
+
+ls()
+rm(list = ls)
+cat("\014")
+
+
+
+# Set the correct library path (do NOT do this if setting up the environment with option B, only option A)
+.libPaths("/sw/apps/R_packages/4.0.0/rackham")
+# load packages required for analysis
+library("limma")
+library("minfi")
+library("RColorBrewer")
+library("missMethyl") # Can take a short time...
+library("minfiData")
+library("Gviz")
+library("DMRcate")
+library("DMRcatedata")
+library("stringr")
+library("mCSEA")
+library(GEOquery)
+setwd("  ")
+untar("GSE129364_RAW.tar", exdir = "GSE129364/idat")
+head(list.files("GSE129364/idat", pattern = "idat"))
+idatFiles <- list.files("GSE129364/idat" , pattern = "idat.gz$" , full = TRUE)
+sapply(idatFiles, gunzip, overwrite =  TRUE)
+rgSet <- read.metharray.exp("GSE129364/idat")
+rgSet
+rgSET[,1:9]
+pData(rgSet)
+head(sampleNames(rgSet))
+MSet <- preprocessRaw(rgSet)
+MSet
+# Compare to previous object
+rgSet
+head(getMeth(MSet)[,1:3])
+head(getUnmeth(MSet)[,1:3])
+ratioSet <- ratioConvert(MSet, what = "both", keepCN = TRUE)
+# Observe the change of the assays
+ratioSet
+
+gset <- mapToGenome(ratioSet)
+gset
+beta <- getBeta(gset)
+head(beta)
+write.csv(beta,file="beta.csv")
+m <- getM(gset)
+head(m)
+write.csv(m,file=m.csv")
+cn <- getCN(gset)
+head(cn)
+write.csv(cn,file=cn.csv")
+qc <- getQC(MSet)
+plotQC(qc)
+# calculate the detection p-values
+detP <- detectionP(rgSet)
+head(detP)
+write.csv(detP,file=detP.csv")
+# examine mean detection p-values across all samples to identify any failed samples
+barplot(colMeans(detP), las=2, cex.names=0.8, ylab="Mean detection p-values")
+abline(h=0.05,col="red")
+phenoData <- pData(MSet)
+densityPlot(MSet, sampGroups = phenoData$Sample_Group)
+controlStripPlot(rgSet, controls="BISULFITE CONVERSION II")
+# The plots of the different control probes can be exported into a pdf file in one step using the function qcReport
+qcReport(rgSet, pdf= "qcReport.pdf")
+
+
+##### select the samples to keep for further analysis
+keep <- !colnames(rgSet) == "IlmnID"
+# subset rgSet
+rgSet <- rgSet[,keep]
+# Check the sample has been removed by looking at the number of colnames
+rgSet
+# subset target as well
+targets <- targets[keep,]#####
+
+
+
+# normalize the data; this results in a GenomicRatioSet object (between array normalization)
+mSetSq <- preprocessQuantile(rgSet)
+par(mfrow=c(1,2))
+# Plot distributions prior to normalization for sample 1
+plotBetasByType(MSet[,1],main="Raw")
+# The normalized object is a GenomicRatioSet which does not contain
+# the necessary probe info, we need to extract this from the MethylSet first.
+typeI <- getProbeInfo(MSet, type = "I")[, c("Name","nCpG")]
+typeII <- getProbeInfo(MSet, type = "II")[, c("Name","nCpG")]
+probeTypes <- rbind(typeI, typeII)
+probeTypes$Type <- rep(x = c("I", "II"), times = c(nrow(typeI), nrow(typeII)))
+# Now plot the distributions of the normalized data for sample 1
+plotBetasByType(getBeta(mSetSq)[,1], probeTypes = probeTypes, main="Normalized",)
+
+#####3par(mfrow=c(1,2)) (within array normalization)
+# Plot distributions prior to normalization for sample 1
+plotBetasByType(MSet[,1],main="Raw")
+# The normalized object is a GenomicRatioSet which does not contain
+# the necessary probe info, we need to extract this from the MethylSet first.
+typeI <- getProbeInfo(MSet, type = "I")[, c("Name","nCpG")]
+typeII <- getProbeInfo(MSet, type = "II")[, c("Name","nCpG")]
+probeTypes <- rbind(typeI, typeII)
+probeTypes$Type <- rep(x = c("I", "II"), times = c(nrow(typeI), nrow(typeII)))
+# Now plot the distributions of the normalized data for sample 1
+plotBetasByType(getBeta(mSetSq)[,1], probeTypes = probeTypes, main="Normalized",)#####
+	   
+	   
+
+##### visualise what the data looks like before and after normalisation
+par(mfrow=c(1,2))
+densityPlot(rgSet, sampGroups=targets$Sample_Group,main="Raw", legend=FALSE)
+legend("top", legend = levels(factor(targets$Sample_Group)),
+       text.col=brewer.pal(8,"Dark2"))
+densityPlot(getBeta(mSetSq), sampGroups=targets$Sample_Group,
+            main="Normalized", legend=FALSE)
+legend("top", legend = levels(factor(targets$Sample_Group)),
+       text.col=brewer.pal(8,"Dark2"))######
+	   
+	   
+# MDS plots to look at largest sources of variation
+# Create color panel
+pal <- brewer.pal(8,"Dark2")
+# Plot figures
+par(mfrow=c(1,2))
+plotMDS(getM(mSetSq), top=1000, gene.selection="common",
+        col=pal[factor(targets$Sample_Group)], dim=c(1,2))
+legend("top", legend=levels(factor(targets$Sample_Group)), text.col=pal,
+       bg="white", cex=0.7)
+
+plotMDS(getM(mSetSq), top=1000, gene.selection="common",
+        col=pal[factor(targets$Sample_Source)], dim=c(1,2))
+legend("top", legend=levels(factor(targets$Sample_Source)), text.col=pal,
+       bg="white", cex=0.7)######
+	   
+	   # ensure probes are in the same order in the mSetSq and detP objects
+detP <- detectionP(rgSet)
+detP <- detP[match(featureNames(mSetSq),rownames(detP)),]
+
+# remove any probes that have failed in one or more samples; this next line
+# checks for each row of detP whether the number of values < 0.01 is equal
+# to the number of samples (TRUE) or not (FALSE)
+keep <- rowSums(detP < 0.01) == ncol(mSetSq)
+table(keep)
+# Subset the GenomicRatioSet
+mSetSqFlt <- mSetSq[keep,]
+mSetSqFlt
+mSetSqFlt <- dropLociWithSnps(mSetSqFlt)
+mSetSqFlt
+#####par(mfrow=c(1,2))
+plotMDS(getM(mSetSqFlt), top=1000, gene.selection="common",
+        col=pal[factor(targets$Sample_Group)], cex=0.8)
+legend("right", legend=levels(factor(targets$Sample_Group)), text.col=pal,
+       cex=0.65, bg="white")
+
+plotMDS(getM(mSetSqFlt), top=1000, gene.selection="common",
+        col=pal[factor(targets$Sample_Source)])
+legend("right", legend=levels(factor(targets$Sample_Source)), text.col=pal,
+       cex=0.7, bg="white")
+# Close double plotting window
+dev.off()######
+
+
+
