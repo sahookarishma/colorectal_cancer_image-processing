@@ -60,5 +60,3 @@ DNA methylation is a key epigenetic modification involved in gene regulation, de
 
 ---
 
-## 📂 Repository Structure
-
