@@ -7,7 +7,7 @@
 This repository provides a comprehensive pipeline and curated guidance for the analysis of DNA methylation microarray datasets (e.g., Illumina 450K/850K arrays), spanning from preprocessing to downstream biological interpretation.
 
 
-> 📖 **Reference**: Karishma Sahoo et al., *Methods in DNA methylation array dataset analysis: A review*, Genomics Data Insights, 2024.  
+> 📖 **Reference**: Karishma Sahoo et al., *Methods in DNA methylation array dataset analysis: A review*, Computational and Structural Biotechnology Journal, 2024.  
 > DOI: [10.1016/j.gendis.2024.100366](https://doi.org/10.1016/j.csbj.2024.05.015)
 
 ---
